@@ -238,7 +238,10 @@ class AsteriskExtenFile:
         return fp, fs
 
     def do_conf(self):
-        for (reg, ip_p, ip_s) in self.reg_lst:
+        reg_gw_lst = [x for x in self.reg_lst]
+        reg_gw_lst += [(x["name"], x["ipv4"], "") for x in Parser._ast["gateway"] ]
+        #print(reg_gw_lst)
+        for (reg, ip_p, ip_s) in reg_gw_lst:
             fp, fs = self.__open_files(reg, ip_p, ip_s, 'conf')
             self.__write_files(fp, fs, ip_s, self.__conf_init)
             for icom in {x['icom'] for x in self.phone_lst if x['reg'] == reg }:
@@ -254,38 +257,40 @@ class AsteriskExtenFile:
                         'rly_no': ph['rly_no']})
                     self.__write_files(fp, fs, ip_s, s1)
                 self.__write_files(fp, fs, ip_s, "\n\n")
+                
                 # Now generate rly context
-                self.__write_files(fp, fs, ip_s, "[rly]\n")
-                for ph in self.phone_lst:
-                    if ph['reg'] == reg:
-                        # Local rly _no
-                        s1 = self.__conf_dial_rly_local_t.substitute({
-                            'rly_no': ph['rly_no'],
-                            'secy_type': ph['secy_type'],
-                            'secy_no': ph['secy_no']})
-                        if ph["byte_no"] != "":
-                            s1 += self.__conf_byte_local_t.substitute({
-                                'rly_no': ph["rly_no"]})
-                        self.__write_files(fp, fs, ip_s, s1)
-                    else:
-                        # Remote rly no
-                        (r, i, p) = [x for x in self.reg_lst if x[0] == ph["reg"] ][0]
-                        sip1 = r
-                        sip2 = ""
-                        if (p != ''): sip2 = r + '-b'
-                        s1 = self.__conf_dial_rly_remote_t.substitute({
-                            'rly_no': ph['rly_no'],
+            self.__write_files(fp, fs, ip_s, "[rly]\n")
+            #print(self.phone_lst)
+            for ph in self.phone_lst:
+                if ph['reg'] == reg:
+                    # Local rly _no
+                    s1 = self.__conf_dial_rly_local_t.substitute({
+                        'rly_no': ph['rly_no'],
+                        'secy_type': ph['secy_type'],
+                        'secy_no': ph['secy_no']})
+                    if ph["byte_no"] != "":
+                        s1 += self.__conf_byte_local_t.substitute({
+                            'rly_no': ph["rly_no"]})
+                    self.__write_files(fp, fs, ip_s, s1)
+                else:
+                    # Remote rly no
+                    (r, i, p) = [x for x in self.reg_lst if x[0] == ph["reg"] ][0]
+                    sip1 = r
+                    sip2 = ""
+                    if (p != ''): sip2 = r + '-b'
+                    s1 = self.__conf_dial_rly_remote_t.substitute({
+                        'rly_no': ph['rly_no'],
+                        'sip1': sip1,
+                        'sip2': sip2 })
+                    if ph["byte_no"] != "":
+                        s1 += self.__conf_byte_remote_t.substitute({
+                            'rly_no': ph["rly_no"],
                             'sip1': sip1,
                             'sip2': sip2 })
-                        if ph["byte_no"] != "":
-                            s1 += self.__conf_byte_remote_t.substitute({
-                                'rly_no': ph["rly_no"],
-                                'sip1': sip1,
-                                'sip2': sip2 })
-                        self.__write_files(fp, fs, ip_s, s1)
-                    #end if
-                #end for
-                self.__write_files(fp, fs, ip_s, "\n\n")
+                    self.__write_files(fp, fs, ip_s, s1)
+                #end if
+            #end for
+            self.__write_files(fp, fs, ip_s, "\n\n")
             self.__do_byte(fp, fs, ip_s)
             self.__do_route(reg, fp, fs, ip_s)
             self.__do_conference(reg, fp, fs, ip_s)

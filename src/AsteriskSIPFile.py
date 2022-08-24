@@ -43,19 +43,21 @@ class AsteriskSIPFile:
 
 
     def __init__(self, reg_lst, phone_lst):
-        for (r, i, b) in reg_lst:
+        reg_gw_lst = [x for x in reg_lst]
+        reg_gw_lst += [(x["name"], x["ipv4"], "") for x in Parser._ast["gateway"] ]
+        for (r, i, b) in reg_gw_lst:
             rname = r
             #print ("Generation sip.conf for " + rname)
             f1 = open(r+'-'+i+'-sip.conf', 'w') or die ('Cannot open file.')
             if (b != ""): f2 = open(r+'-b-'+b+'-sip.conf', 'w') or die ('Cannot open file.')
             # do the gw sip trunks here
-            for gw in Parser._ast["gateway"]:
-                s1 = self._gateway_t.substitute({'gw': gw["name"], 'ip': gw['ipv4']})
-                f1.write(s1)
-                if b!= "": f2.write(s1)
+            #for gw in Parser._ast["gateway"]:
+            #    s1 = self._gateway_t.substitute({'gw': gw["name"], 'ip': gw['ipv4']})
+            #    f1.write(s1)
+            #    if b!= "": f2.write(s1)
                 
             # do the primary first
-            for (reg, rip, rbip) in reg_lst:
+            for (reg, rip, rbip) in reg_gw_lst:
                 if (reg == rname): continue
                 s1 = AsteriskSIPFile.siptrunk_t.substitute({'reg_name': reg, 'reg_ip': rip})
                 f1.write(s1)
