@@ -17,9 +17,7 @@ required.
 
 from IcomParser import IcomParser
 from Parser import Parser
-from RexclException import PhoneAlreadyDefined, IcomNumberAlreadyDefined, IcomNotDefined
-from RexclException import PstnNumberAlreadyDefined, RlyNumberAlreadyDefined
-from RexclException import PhoneNotDefined
+from RexclException import ParsingError
 
 class PhoneParser(Parser):
     def __init__(self, line_no, line):
@@ -34,7 +32,7 @@ class PhoneParser(Parser):
         name = self.get_token()
         # Chek for duplicate phone names
         if name in [ val["name"] for val in Parser._ast["phone"] ]:
-            raise PhoneAlreadyDefined("Phone " +
+            raise ParsingError("Phone " +
                                       name +
                                       " already defined at " +
                                       str(self.get_phone_def_line_no(name)) +
@@ -44,7 +42,7 @@ class PhoneParser(Parser):
         icom = self.get_token()
         # Check if the icom exists
         if (not IcomParser.icom_exists(icom)):
-            raise IcomNotDefined("Icom " + icom +
+            raise ParsingError("Icom " + icom +
                                  " is not defined. " +
                                  self.error_string())
         
@@ -53,7 +51,7 @@ class PhoneParser(Parser):
         icom_no = self.get_token()
         # Check if the icom_number is already defined. 
         if (icom, icom_no) in [ (val["icom"], val["icom_no"]) for val in Parser._ast["phone"] ]:
-            raise IcomNumberAlreadyDefined("Icom No. " + icom_no +
+            raise ParsingError("Icom No. " + icom_no +
                                            " for Intercom " + icom +
                                            " is already defined" +
                                            ". " + self.error_string())
@@ -69,7 +67,7 @@ class PhoneParser(Parser):
 
         # Check if Rly No. is unique
         if rly_no in [ val["rly_no"] for val in Parser._ast["phone"] ]:
-            raise RlyNumberAlreadyDefined("Rly Number " + rly_no +
+            raise ParsingError("Rly Number " + rly_no +
                                       " for Phone " + name +
                                       " is already defined" +
                                       ". " + self.error_string())
@@ -79,7 +77,7 @@ class PhoneParser(Parser):
         # Check if PSTN No. is unique
         if ((pstn_no != "-1") and
             (pstn_no in [ val["pstn_no"] for val in Parser._ast["phone"] ])):
-            raise PstnNumberAlreadyDefined("PSTN Number " + pstn_no +
+            raise ParsingError("PSTN Number " + pstn_no +
                                        " for Phone " + name +
                                        " is already defined" +
                                        ". " + self.error_string())
@@ -98,7 +96,10 @@ class PhoneParser(Parser):
             "byte_no": "",
             "secy_no": "",
             "secy_type": "default",
-            "line_no": line_no
+            "line_no": line_no,
+            "breg": "",
+            "model": "",
+            "mac": ""
         })            
 
     def get_phone_def_line_no(self, phone_name: str) -> str:

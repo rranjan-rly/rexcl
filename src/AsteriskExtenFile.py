@@ -6,19 +6,20 @@ __conf_init__ = """
 ; ARG1 -> icom_name
 ; ARG2 -> icom_no
 ; ARG3 -> rly_no
-exten => s, 1, Set(CALLERID(all) = ${CLI_ICOM})
+exten => s, 1, Set(CALLERID(all)=${CLI_ICOM})
   same => n(common), Set(REDIR=${DB(${ARG1}-redir/${ARG2})})
   same => n, GotoIf($[${ISNULL(${REDIR})}]?internal:redir)
-  same => n(internal), Dial(SIP/${ARG3}, 60, tT)
+  same => n(internal), Dial(SIP/${ARG3},60,tT)
   same => n, Hangup
-  same => n(redir), Goto(${REDIR}, common)
+  same => n(redir), Goto(${REDIR},common)
 
 
 [dial_rly_remote]
 ; ARG1 -> rly_no
 ; ARG2 -> sip1
 ; ARG3 -> sip2
-exten => s, 1, Set(CALLERID(all)=${CLI_RLY})
+; ARG4 -> Local STD CODE for CLI
+exten => s, 1, Set(CALLERID(all)=${ARG4}${CLI_RLY})
   same => n, Set(STATUS=${SIPPEER(${ARG1},status)})
   same => n, GotoIf($[ ${STATUS} = UNREACHABLE]?try2)
   same => n, Dial(SIP/${ARG2}/${ARG1},60, tT)
@@ -45,11 +46,11 @@ exten => s, 1, Set(STATUS=${SIPPEER(${ARG1},status)})
 exten => s, 1, GotoIf($[${ARG4} = no ] ? noclimod)
   same => n, Set(CALLERID(all)=${CLI_RLY})
   same => n(noclimod), Set(REDIR=${DB(rly-redir/${ARG1})})
-  same => n, GotoIf($[${REDIR} != ""]?redir)
-  same => n, GotoIf($[${ARG2} = ""]?nosecy)
+  same => n, GotoIf($[ "${REDIR}X" != "X"]?redir)
+  same => n, GotoIf($["${ARG2}X" = "X"]?nosecy)
   same => n, GotoIf($[${CALLERID(num)} = ${ARG2}]?nosecy)
   same => n, GotoIf($[${ARG3}=only-secy]?only-secy)
-  same => n, Dial(SIP/${ARG2},60,tT)
+  same => n, Dial(SIP/${ARG2},15,tT)
   same => n(nosecy), Dial(SIP/${ARG1},60,tT)
   same => n, Hangup
   same => n(only-secy) DIal(SIP/${ARG2},60,tT)
@@ -61,7 +62,7 @@ exten => s, 1, GotoIf($[${ARG4} = no ] ? noclimod)
 ; ARG1 -> rly_no
 exten => s, 1, Set(CALLERID(all)=${CLI_BYTE})
   same => n, Set(REDIR=${DB(byte-redir/${ARG1})})
-  same => n, GotoIf($[${REDIR} != ""]?redir)
+  same => n, GotoIf($[ "${REDIR}X" != "X"]?redir)
   same => n, Dial(SIP/${ARG1},60,tT)
   same => n(redir), Goto(byte-icom,${REDIR})
 
@@ -74,6 +75,31 @@ exten => s, 1, Answer
     same => n, Read(pin,,4)
     same => n, Set(DB(conf/${ARG1})=${pin})
     same => n, Goto(rly,playpin-${ARG2},1)
+    same => n, Hangup
+
+[rly]
+;conference admin - play pin.
+exten => *26630*, 1, Set(CALLERID(all)=${CLI_RLY})
+    same => n, Set(ADMIN=${CALLERID(num)})
+    same => n, Goto(rly,playpin-${ADMIN},1)
+
+;conference admin - set pin.
+exten => *26631*, 1, Set(CALLERID(all)=${CLI_RLY})
+    same => n, Set(ADMIN=${CALLERID(num)})
+    same => n, Goto(rly,setpin-${ADMIN},1)
+
+exten => *30, 1, CallCompletionRequest
+    same => n, Answer(500)
+    same => n, Playback(auth-thankyou)
+    same => n, Hangup
+
+exten => *31, 1, CallCompletionCancel
+    same => n, Answer(500)
+    same => n, Playback(auth-thankyou)
+    same => n, Hangup
+
+exten => *38, 1, Answer
+    same => n, SayUnixTime(,Asia/Kolkata,ABdY \’digits/at\’ IMp)
     same => n, Hangup
 
 """
@@ -142,12 +168,13 @@ class AsteriskExtenFile:
     # rly_no,
     # sip1
     # sip2
-    __conf_dial_rly_remote_t = Template('exten => $rly_no, 1, GoSub(dial_rly_remote,s,1(t$rly_no,$sip1,$sip2)\n')
+    # rly_std_code
+    __conf_dial_rly_remote_t = Template('exten => $rly_no, 1, GoSub(dial_rly_remote,s,1(t$rly_no,$sip1,$sip2,$rly_std_code))\n')
 
     # rly_no
     # secy_no
-    __conf_dial_rly_local_t = Template('exten => $rly_no, 1, GoSub(dial_rly_local,s,1($rly_no,$secy_no,$secy_type,yes)\n'
-                                       'exten => t$rly_no, 1, GoSub(dial_rly_local,s,1($rly_no,$secy_no,$secy_type,no)\n'
+    __conf_dial_rly_local_t = Template('exten => $rly_no, 1, GoSub(dial_rly_local,s,1($rly_no,$secy_no,$secy_type,yes))\n'
+                                       'exten => t$rly_no, 1, GoSub(dial_rly_local,s,1($rly_no,$secy_no,$secy_type,no))\n'
                                        )
     __conf_byte_local_t = Template(
         'exten => byte-$rly_no, 1, GoSub(dial_byte_local,s,1($rly_no))\n')
@@ -183,8 +210,11 @@ class AsteriskExtenFile:
     # $name
     # $admin_phone_no
     __conf_conference_local_t = Template(
-        'exten => $conf_no, 1, GoSub(dial_rly_local,s,1(conf-$conf_no,,yes)\n'
-        'exten => t$conf_no, 1, GoSub(dial_rly_local,s,1(conf-$conf_no,,no)\n'
+        'exten => $conf_no, 1, Noop\n'
+            'same => n, Set(CALLERID(all)=$${CLI_RLY})\n'
+            'same => n, Goto(conf-$conf_no,1)\n'
+        'exten => t$conf_no, 1, Noop\n'
+            'same => n, Goto(conf-$conf_no,1)\n'
         'exten => conf-$conf_no,1,Answer\n'
         '    same => n, Playback(conf-getpin)\n'
         '    same => n, Read(pin,,4)\n'
@@ -210,7 +240,7 @@ class AsteriskExtenFile:
     # $sip1
     # $sip2
     __conf_conference_remote_t = Template(
-        'exten => $conf_no, 1, Goto(dial_rly_remote,s,1(t$conf_no,$sip1,$sip2))\n')
+        'exten => $conf_no, 1, Goto(dial_rly_remote,s,1(t$conf_no,$sip1,$sip2, $rly_std_code))\n')
                                           
     
     def __init__(self, reg_lst, phone_lst):
@@ -268,6 +298,12 @@ class AsteriskExtenFile:
                         'rly_no': ph['rly_no'],
                         'secy_type': ph['secy_type'],
                         'secy_no': ph['secy_no']})
+                    if Parser._ast['general']['rly-std-code'] != '':
+                        s1 += self.__conf_dial_rly_local_t.substitute({
+                        'rly_no': Parser._ast['general']['rly-std-code'] + ph['rly_no'],
+                        'secy_type': ph['secy_type'],
+                        'secy_no': ph['secy_no']})
+                        
                     if ph["byte_no"] != "":
                         s1 += self.__conf_byte_local_t.substitute({
                             'rly_no': ph["rly_no"]})
@@ -281,7 +317,15 @@ class AsteriskExtenFile:
                     s1 = self.__conf_dial_rly_remote_t.substitute({
                         'rly_no': ph['rly_no'],
                         'sip1': sip1,
-                        'sip2': sip2 })
+                        'sip2': sip2,
+                        'rly_std_code': Parser._ast['general']['rly-std-code']})
+                    if Parser._ast['general']['rly-std-code'] != '':
+                        s1 += self.__conf_dial_rly_remote_t.substitute({
+                            'rly_no': Parser._ast['general']['rly-std-code'] + ph['rly_no'],
+                            'sip1': sip1,
+                            'sip2': sip2,
+                            'rly_std_code': Parser._ast['general']['rly-std-code']})
+                        
                     if ph["byte_no"] != "":
                         s1 += self.__conf_byte_remote_t.substitute({
                             'rly_no': ph["rly_no"],
@@ -294,6 +338,7 @@ class AsteriskExtenFile:
             self.__do_byte(fp, fs, ip_s)
             self.__do_route(reg, fp, fs, ip_s)
             self.__do_conference(reg, fp, fs, ip_s)
+            self.__do_map(fp, fs, ip_s)
             fp.close()
             if (fs != ''): fs.close()
                     
@@ -313,7 +358,16 @@ class AsteriskExtenFile:
         self.__write_files(fp, fs, ip_s, "[outgoing]\n")
         routes  = [x for x in Parser._ast["route"] if x["rname"] == reg]
         for r in routes:
-            s1 = "exten => _" + r['pattern'] + ', 1, Noop\n'
+            if r['cli'] == "CLI-RLY":
+                s1 = "exten => _" + r['pattern'] + ", 1, Set(CALLERID(all) = ${CLI_RLY})\n"
+                s1 += '  same => n, Set(CID=' + Parser._ast['general']['rly-std-code'] + '${CALLERID(num)})\n'
+                s1 += '  same => n, Set(CALLERID(num)=${CID})\n'
+            elif r['cli'] == "CLI-PSTN":
+                s1 = "exten => _" + r['pattern'] + ", 1, Set(CALLERID(all) = ${CLI_PSTN})\n"
+                s1 += '  same => n, Set(CID=' + Parser._ast['general']['pstn-std-code'] + '${CALLERID(num)})\n'
+                s1 += '  same => n, Set(CALLERID(num)=${CID})\n'
+            elif r['cli'] == 'NIL':
+                s1 = "exten => _" + r['pattern'] + ", 1, Noop\n"
             for rdef in r['rdef']:
                 s1 += '  same => n, Dial(SIP/sip-' + rdef["name"] + '/'
                 try:
@@ -350,9 +404,15 @@ class AsteriskExtenFile:
                                    self.__conf_conference_remote_t.substitute(
                                        {'conf_no': c['conf_no'],
                                         'sip1': sip1,
-                                        'sip2': sip2}))
+                                        'sip2': sip2,
+                                        'rly_std_code': Parser._ast['general']['rly-std-code']}))
    
                 
                     
-        
+    def __do_map(self, fp, fs, ip_s):
+        self.__write_files(fp, fs, ip_s, ";Generating maps \n[rly]\n")
+        for m in Parser._ast["map"]:
+            rly_no = [x["rly_no"] for x in Parser._ast['phone'] if x["name"] == m["phone"] ][0]
+            s1 = "exten => " + m["short_code"] + ", 1, Goto(rly," + rly_no + ",1)\n"
+            self.__write_files(fp, fs, ip_s, s1)
         

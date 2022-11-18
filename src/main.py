@@ -18,4 +18,4 @@ if __name__ == "__main__":
         
     p.gen_registrar_conf()
     
-    p.print_ast()
+  #  p.print_ast()

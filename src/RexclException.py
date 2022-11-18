@@ -16,6 +16,7 @@ class RexclException(Exception):
         rv += "=" * 70 + "\n"
         return rv
 
+"""
 class TokenNotMatched(RexclException):
     def __init__(self, msg):
         RexclException.__init__(self, msg)
@@ -75,7 +76,7 @@ class ExtraCharsInLine(RexclException):
 class PhoneNotDefined(RexclException):
     def __init__(self, msg):
         RexclException.__init__(self, msg)
-
+"""
 class ParsingError(RexclException):
     def __init__(self, msg):
         RexclException.__init__(self, msg)

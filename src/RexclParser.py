@@ -1,7 +1,7 @@
 
 import json
 
-from RexclException import UnknownRexclStatement
+from RexclException import ParsingError
 from Parser import Parser
 from RegistrarParser import RegistrarParser
 from IcomParser import IcomParser
@@ -13,6 +13,10 @@ from GatewayParser import GatewayParser
 from BossSecyParser import BossSecyParser
 from RouteParser import RouteParser
 from ConferenceParser import ConferenceParser
+from MapParser import MapParser
+from IPPhoneParser import IPPhoneParser
+from PhoneConfGenerator import PhoneConfGenerator
+
 
 class RexclParser:
     def __init__(self):
@@ -21,13 +25,13 @@ class RexclParser:
         Parser._ast["gateway"] = []
         Parser._ast["route"] = []
         Parser._ast["conference"] = []
+        Parser._ast["map"] = []
         Parser._ast["general"] = {}
         Parser._ast["general"]["rly-std-code"] = ''
         Parser._ast["general"]["pstn-std-code"] = ''
         Parser._ast["general"]["ntp-server"] = ''
         
         
-    
     def parse_stmt(self, line_no, line):
         #remove the \n at the end of the line
         ln = line.strip(" \n")
@@ -51,8 +55,12 @@ class RexclParser:
                 ConferenceParser(line_no, line)
             elif keyword == "rly-std-code" or keyword == "pstn-std-code" or keyword == "ntp-server":
                 self.do_general(line_no, line)
+            elif keyword == "map":
+                MapParser(line_no, line)
+            elif keyword == "ipphone":
+                IPPhoneParser(line_no, line)
             else:
-                raise UnknownRexclStatement(f"Line No. {line_no}: Unknown statement: {line}")
+                raise ParsingError(f"Line No. {line_no}: Unknown statement: {line}")
 
     def do_general(self, line_no, line):
         p = Parser(line_no, line)
@@ -81,4 +89,5 @@ class RexclParser:
         #print(Parser._ast)
         AsteriskSIPFile(reg_lst, Parser._ast["phone"])
         AsteriskExtenFile(reg_lst, Parser._ast["phone"])
+        PhoneConfGenerator()
         

@@ -2,7 +2,8 @@
 Route Statement Definition
 ==========================
 
-route <rname> ( <reg_or_gw>, <pattern>, <route_def> [| <route_def] )
+route <rname> ( <reg_or_gw>, CLI, <pattern>, <route_def> [| <route_def] )
+CLI ::= CLI-RLY | CLI-PSTN | NIL
 route_def ::= (sip|pri):<reg_or_gw>[:<tranformation_function>]
 transformation_function ::= prefix ( <str> )
   | postfix ( <str> )
@@ -29,7 +30,7 @@ transformation_function ::= prefix ( <str> )
 Example
 ========
 
-route r1(reg1, 0X., sip:g1)
+route r1(reg1, CLI-RLY, 0X., sip:g1)
 
 In the statement above, we define a route r1 that is installed in the server reg1. It says
 that whenever the pattern 0X. is seen by the exchange, it must be forwarded to the
@@ -39,7 +40,7 @@ server g1 using SIP trunk. The pattern 0X. meets any number that starts with 0 l
 What if the server g1 is down? We want to have a
 second route to the server g2. It is defined as under
 
-route r2(reg1, 0X., sip:g1|sip:g2)
+route r2(reg1, CLI-RLY, 0X., sip:g1|sip:g2)
 
 The above statement says that if it is not possible to route the call to g1 then route it
 to g2 using SIP.
@@ -67,7 +68,12 @@ class RouteParser(Parser):
         self.check_reg_gw_exist(self.reg_gw)
         self.route['rname'] = self.reg_gw
         self.match_token(Parser._COMMA)
+        self.cli = self.get_token()
+        if self.cli != 'CLI-RLY' and self.cli != 'CLI-PSTN' and self.cli != 'NIL':
+            raise ParsingError("Expecting CLI-RLY ot CLI-PSTN. Got " + self.cli + ". " + self.error_string())
+        self.match_token(Parser._COMMA)
         self.pattern = self.get_token_till(Parser._COMMA)
+        self.route['cli'] = self.cli
         self.route['pattern'] = self.pattern
         self.route['rdef'] = []
         self.match_token(Parser._COMMA)

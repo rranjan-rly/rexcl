@@ -13,7 +13,7 @@ class AsteriskSIPFile:
                        'context=icom-$icom\nqualify=yes\nhost=dynamic\n'
                        'callcounter=yes\nnotifyhold=yes\nnotifyringing=yes\n'
                        'allowsubscribe=yes\ndtmfmode=rfc2833\n'
-                       'cc_agent_policy=generic\ncc-monitor_policy=generic\n'
+                       'cc_agent_policy=generic\ncc_monitor_policy=generic\n'
                        'sendrpid=pai\ntrustrpid=yes\nbusylevel=1\n'
                        'disallow=all\nallow=alaw\nallow=ulaw\nallow=gsm\n'
                        'callerid="$disp_name"<>\n'
@@ -76,5 +76,5 @@ class AsteriskSIPFile:
                 if b!= "": f2.write(s1)
                 
         f1.close()
-        if f2: f2.close()
+        if b!= "": f2.close()
         #print("+++++++++++++")

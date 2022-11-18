@@ -22,7 +22,7 @@ another registrar either as secondary or primary registrar.
 
 """
 
-from RexclException import RegistrarNameExists , RegistrarIPExists, RegistrarSameIP 
+from RexclException import ParsingError
 from Parser import Parser
 
 class RegistrarParser(Parser):
@@ -49,20 +49,20 @@ class RegistrarParser(Parser):
         self.check_for_extra_chars()
         
         if (ipv4 == bipv4):
-            raise RegistrarSameIP("Registrar " + name + " has same secondary and primary IPs.\n" + self.error_string())
+            raise ParsingError("Registrar " + name + " has same secondary and primary IPs.\n" + self.error_string())
 
         # All ok. Register the registrar
 
         # Check for name clash
         if name in [ val["name"] for val in Parser._ast["registrar"] ]:
-            raise RegistrarNameExists("Registrar " + name + " already exists.")
+            raise ParsingError("Registrar " + name + " already exists.")
         # Check for IP clash
         # prepare a set of all IPs. 
         s1 = {val["ip"] for val in Parser._ast["registrar"] if val["ip"] != ""}
         s2 = {val["bip"] for val in Parser._ast["registrar"] if val["bip"] != ""}
         s1.update(s2)
         if ((ipv4 in s1) or (bipv4 in s1)):
-            raise RegistrarIPExists("Registrar IP " +
+            raise ParsingError("Registrar IP " +
                                     bipv4 +
                                     " already exists.\n" +
                                     self.error_string())

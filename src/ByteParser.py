@@ -1,5 +1,5 @@
 
-import RexclException
+from RexclException import ParsingError
 from Parser import Parser
 from PhoneParser import PhoneParser
 
@@ -21,6 +21,6 @@ class ByteParser(Parser):
             # end if
         # end for
         # I am here. This means that the phone does not exist
-        raise PhoneNotDefined("Phone " + phone +
+        raise ParsingError("Phone " + phone +
                               " not defined. " +
                               self.error_string())

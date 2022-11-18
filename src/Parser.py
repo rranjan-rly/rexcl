@@ -1,6 +1,4 @@
-
-from RexclException import NotAnIpAddress, TokenNotMatched
-from RexclException import ExtraCharsInLine 
+import string
 from RexclException import ParsingError 
 
 class Parser:
@@ -8,6 +6,7 @@ class Parser:
     _COMMA = ","
     _LP = "("
     _RP = ")"
+    _COLON = ":"
     def __init__(self, line_no, line):
         """
         Instantiates various housekeeping variables.
@@ -46,7 +45,7 @@ class Parser:
         str_start = self.curp;
         for c in t:
             if (c != self.lst[self.curp]):
-                raise TokenNotMatched("Expecting " + token +
+                raise ParsingError("Expecting " + token + "." + 
                                       self.error_string())
             self.curp += 1
         #end for
@@ -60,6 +59,16 @@ class Parser:
             raise ParsingError('Unexpected End of line. ' + self.error_string())
             
 
+    def get_next_char(self):
+        try:
+            self.eat_white()
+            self.current_token = self.line[self.curp]
+            self.curp += 1
+            return self.current_token
+        except IndexError:
+            raise ParsingError('Unexpected End of line. ' + self.error_string())
+           
+    
     def get_token(self):
         self.eat_white()
         token_start = self.curp
@@ -84,6 +93,37 @@ class Parser:
         self.current_token = self.line[token_start:self.curp]
         return self.current_token
     
+    def __check_hex(self, s):
+        for c in s:
+            if c not in string.hexdigits:
+                raise ParsingError("The MAC address is not correct. " + self.error_string())
+            
+    def get_token_mac(self):
+        self.eat_white()
+        
+        b1 = (self.get_next_char() + self.get_next_char()).lower()
+        self.__check_hex(b1)
+        self.match_token(Parser._COLON)
+        b2 = (self.get_next_char() + self.get_next_char()).lower()
+        self.__check_hex(b2)
+        self.match_token(Parser._COLON)
+        b3 = (self.get_next_char() + self.get_next_char()).lower()
+        self.__check_hex(b3)
+        self.match_token(Parser._COLON)
+        b4 = (self.get_next_char() + self.get_next_char()).lower()
+        self.__check_hex(b4)
+        self.match_token(Parser._COLON)
+        b5 = (self.get_next_char() + self.get_next_char()).lower()
+        self.__check_hex(b5)
+        self.match_token(Parser._COLON)
+        b6 = (self.get_next_char() + self.get_next_char()).lower()
+        self.__check_hex(b6)
+        self.current_token = b1 + b2 + b3 + b4 + b5 + b6
+        
+        return self.current_token
+            
+        
+               
     def get_token_ipv4(self):
         self.eat_white()
         token_start = self.curp
@@ -96,15 +136,15 @@ class Parser:
                 self.curp += 1
 
             if (token_len == 0):
-                raise NotAnIpAddress("Octets of IP address should start with a digit.\n" + self.error_string())
+                raise ParsingError("Octets of IP address should start with a digit." + self.error_string())
             
             if(self.lst[self.curp] != '.'):
                 if (times != 4):
-                    raise NotAnIpAddress("Expecting a dot character.")
+                    raise ParsingError("Expecting a dot character." + self.error_string())
 
             self.current_token = self.line[f:self.curp]
             if(int(self.current_token) > 255):
-                raise NotAnIPAddress("Octet of an IP address shall be less than 255.")
+                raise ParsingError("Octet of an IP address shall be less than 255." + self.error_string())
 
             self.curp += 1
             f = self.curp
@@ -126,7 +166,9 @@ class Parser:
         self.eat_white()
         try:
             if (self.lst[self.curp] not in list(comment_chars)):
-                raise ExtraCharsInLine("Extra Characters in line. " + self.error_string())
+                raise ParsingError("Extra Characters in line. " + self.error_string())
         except IndexError:
             #encounters when the end of line is reached
             pass;
+
+        

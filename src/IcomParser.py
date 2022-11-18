@@ -10,8 +10,7 @@ previously defined.
  
 """
 
-from RexclException import IcomNameExists, RegistrarNotDefined
-from RexclException import ExtraCharsInLine
+from RexclException import ParsingError
 from Parser import Parser
 
 class IcomParser(Parser):
@@ -33,13 +32,13 @@ class IcomParser(Parser):
         self.check_for_extra_chars()
         
         if name in [ val["name"] for val in Parser._ast["icom"] ]:
-            raise IcomNameExists("Icom name " +
+            raise ParsingError("Icom name " +
                                  name +
                                  " already exists." +
                                  self.error_string())
         
         if reg not in [ val["name"] for val in Parser._ast["registrar"] ]:
-            raise RegistrarNotDefined("The registrar " +
+            raise ParsingError("The registrar " +
                                       reg +
                                       " is not defined. " +
                                       self.error_string())
