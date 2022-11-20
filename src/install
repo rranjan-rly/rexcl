@@ -1,0 +1,44 @@
+#!/bin/bash
+
+SIP_CONF=/etc/asterisk.sip.conf
+SIP_STR=/etc/asterisk/voip/*-sip.conf
+EXTEN_CONF=/etc/asterisk/extensions.conf
+EXTEN_STR=/etc/asterisk/voip/*-exten.conf
+
+echo -n "Updating and upgrading OS ... "
+apt-get update 
+apt-get -y upgrade
+
+echo -n "Installing git and apache2 ... "
+apt-get -y install git apache2 asterisk
+mkdir -p /var/www/html/phones
+
+
+echo -n " Installing rexclconf ... "
+cd /usr/local/share
+git clone https://github.com/ptiriset/Asterisk.git
+cd Asterisk/rexcl
+cp rexclconf /usr/local/bin
+chmod +x /usr/local/bin/rexclconf
+
+
+mkdir -p /etc/asterisk/voip
+cd /etc/asterisk
+
+fgrep "$SIP_STR" $SIP_CONF
+if [ $? -ne 0 ] 
+then	
+	echo "" > $SIP_CONF
+	echo "#include \"$SIP_STR\"" >> /etc/asterisk/sip.conf
+fgrep "$EXTEN_STR" $EXTEN_CONF
+if [ $? -ne 0 ]
+then
+	echo "" >> $EXTEN_CONF
+	echo "#include \"$EXTEN_STR\"" >> $EXTEN_CONF
+	echo "" >> $EXTEN_CONF
+fi
+
+
+
+
+

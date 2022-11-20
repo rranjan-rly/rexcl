@@ -1,0 +1,54 @@
+
+REXCLDIR=/usr/local/share/Asterisk/rexcl
+PYTHON=/usr/bin/python3
+CONF_DIR=/etc/asterisk/voip
+AST_COMMAND=/usr/sbin/asterisk
+
+if [ "$#" -lt 1 ]; then
+    echo "Usage: rexclconf COMMAND"
+    echo "   Command"
+    echo "    save      Saves the configuration files in the main configuration
+folder."
+    echo "    apply     Apply the configuration and reload the same."
+    echo ""
+    echo "    gen       Generate the configuration from a rexcl definition."
+    echo ""
+    exit -1
+fi
+
+case $1 in
+     gen)
+	# Generate configuration
+	$PYTHON $REXCLDIR/main.py $2
+	;;
+    save)
+        # Backup the files first
+        echo -n "Taking Backup ... "
+        mkdir -p $CONF_DIR/{1,2,3,4,5,6,7,8,9}
+        mv $CONF_DIR/9 $CONF_DIR/9_old
+        for i in 8 7 6 5 4 3 2 1
+        do
+            mv $CONF_DIR/$i $CONF_DIR/$((i+1))
+            echo -n "*"
+        done
+
+        mv $CONF_DIR/9_old $CONF_DIR/1
+        rm $CONF_DIR/1/*.conf > /dev/null 2>&1
+        cp $CONF_DIR/*.conf $CONF_DIR/1/
+        echo " Done.!"
+        cp *.conf $CONF_DIR/
+        echo "Saving configuration file: Success."
+        ;;
+    apply)
+        echo -n "Reloading SIP configuration ... "
+        $AST_COMMAND -rx "sip reload"
+        echo "Done!"
+        echo -n "Dialplan Reloading ... "
+        $AST_COMMAND -rx "dialplan reload"
+        ;;
+    *)
+        echo "Unknown command - $1"
+        ;;
+esac
+echo ""
+
